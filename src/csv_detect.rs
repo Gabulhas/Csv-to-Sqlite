@@ -51,25 +51,21 @@ impl DetectedCsv {
             tablename: get_db_mame(pathname),
             headers,
             types: result_types,
-            reader,
+            reader: csv::Reader::from_path(path_str).unwrap(),
         })
-    }
-
-    pub fn to_string(self) -> String {
-        format!("{} {:?} {:?}", self.tablename, self.headers, self.types)
     }
 }
 
 fn detect_row_types(record: StringRecord) -> Vec<St> {
-    record.iter().map(|x| detect_column_type(x)).collect()
+    record.iter().map(detect_column_type).collect()
 }
 
 fn detect_column_type(s: &str) -> St {
-    if !s.clone().parse::<i32>().is_err() {
+    if s.parse::<i32>().is_ok() {
         St::Integer
-    } else if !s.clone().parse::<f64>().is_err() {
+    } else if s.parse::<f64>().is_ok() {
         St::Float
-    } else if s.clone().eq("") {
+    } else if s.eq("") {
         St::Null
     } else {
         St::String
@@ -77,7 +73,7 @@ fn detect_column_type(s: &str) -> St {
 }
 
 fn type_ambiguity_solve(a: &St, b: &St) -> St {
-    match (a.clone(), b.clone()) {
+    match (*a, *b) {
         (St::Integer, St::Float) => St::Float,
         (St::Float, St::Integer) => St::Float,
         (_, St::String) => St::String,
@@ -99,7 +95,5 @@ fn ambiguity_solve_between_two(a: Vec<St>, b: Vec<St>) -> Vec<St> {
 }
 
 fn get_db_mame(pathname: DirEntry) -> String {
-    let filename_as_str = pathname.file_name().to_str().unwrap().to_string();
-    let result = filename_as_str.clone();
-    result.replace(".csv", "")
+    pathname.file_name().to_str().unwrap().to_string().replace(".csv", "")
 }
